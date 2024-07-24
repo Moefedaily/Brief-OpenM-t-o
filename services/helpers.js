@@ -2,7 +2,7 @@ import {
   unixToLocalTime,
   kmToMiles,
   mpsToMph,
-  timeTo12HourFormat,
+  isoToLocalTime,
 } from "./converters";
 
 export const getWindSpeed = (unitSystem, windInMps) =>
@@ -13,11 +13,9 @@ export const getVisibility = (unitSystem, visibilityInMeters) =>
     ? (visibilityInMeters / 1000).toFixed(1)
     : kmToMiles(visibilityInMeters / 1000);
 
-export const getTime = (unitSystem, currentTime, timezone) =>
-  unitSystem == "metric"
-    ? unixToLocalTime(currentTime, timezone)
-    : timeTo12HourFormat(unixToLocalTime(currentTime, timezone));
-
+export const getTime = (unitSystem, isoString) => {
+  return isoToLocalTime(isoString, unitSystem);
+};
 export const getAMPM = (unitSystem, currentTime, timezone) =>
   unitSystem === "imperial"
     ? unixToLocalTime(currentTime, timezone).split(":")[0] >= 12
@@ -25,7 +23,7 @@ export const getAMPM = (unitSystem, currentTime, timezone) =>
       : "AM"
     : "";
 
-export const getWeekDay = (weatherData) => {
+export const getWeekDay = (isoString) => {
   const weekday = [
     "Sunday",
     "Monday",
@@ -35,7 +33,25 @@ export const getWeekDay = (weatherData) => {
     "Friday",
     "Saturday",
   ];
-  return weekday[
-    new Date((weatherData.dt + weatherData.timezone) * 1000).getUTCDay()
-  ];
+  const date = new Date(isoString);
+  return weekday[date.getDay()];
+};
+export const getCurrentWeather = (weatherData) => {
+  const currentTime = new Date();
+  const hourlyData = weatherData.hourly;
+  const currentIndex =
+    hourlyData.time.findIndex((time) => {
+      const hourTime = new Date(time);
+      return hourTime > currentTime;
+    }) - 1;
+
+  return {
+    temperature: hourlyData.temperature_2m[currentIndex],
+    humidity: hourlyData.relativehumidity_2m[currentIndex],
+    windSpeed: hourlyData.windspeed_10m[currentIndex],
+    windDirection: hourlyData.winddirection_10m[currentIndex],
+    weatherCode: hourlyData.weathercode[currentIndex],
+    time: new Date(hourlyData.time[currentIndex]),
+    isDay: currentTime.getHours() >= 6 && currentTime.getHours() < 20,
+  };
 };
